@@ -1,0 +1,138 @@
+/*
+  ------------------------------------------------------------------------------
+  © 2025 Javier Siliacay | USTP Autotronics - All Rights Reserved.
+
+  This source code is the intellectual property of the author and is provided 
+  for educational and non-commercial use only. Unauthorized copying, modification, 
+  distribution, or use of this code for commercial purposes is strictly prohibited 
+  without prior written consent from the author.
+
+  Violation of these terms may result in legal action under applicable intellectual 
+  property laws.
+
+  For permissions, contact: github.com/javiersiliacay
+  ------------------------------------------------------------------------------
+*/
+
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SH110X.h>
+
+#define SCREEN_WIDTH 128
+#define SCREEN_HEIGHT 64
+#define OLED_RESET -1
+
+Adafruit_SH1106G display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+
+const int pulsePin = A0;
+int threshold = 520;
+bool pulseDetected = false;
+
+unsigned long lastBeatTime = 0;
+unsigned long currentBeatTime = 0;
+int ibi = 600;
+int bpm = 0;
+int smoothSignal = 0;
+int signal = 0;
+
+#define HeartLed 13
+
+#define WAVE_HEIGHT 30
+#define BASELINE 50
+int xPos = 0;
+
+// LED blink without delay
+unsigned long blinkStart = 0;
+bool blinkState = false;
+int blinkDelay = 300;
+
+// Wave scroll timer
+unsigned long lastWaveScroll = 0;
+int waveInterval = 30; // Will be adjusted based on BPM
+
+void setup() {
+  Serial.begin(9600);
+  pinMode(pulsePin, INPUT);
+  pinMode(HeartLed, OUTPUT);
+
+  if (!display.begin()) {
+    Serial.println("OLED failed");
+    while (1);
+  }
+
+  display.clearDisplay();
+  display.setTextColor(SH110X_WHITE);
+  display.setTextSize(1);
+  display.setCursor(0, 0);
+  display.print("Initializing...");
+  display.display();
+  delay(1000);
+  display.clearDisplay();
+
+  display.setCursor(0, 0);
+  display.print("BPM: ");
+  display.display();
+}
+
+void loop() {
+  signal = analogRead(pulsePin);
+  smoothSignal = (smoothSignal * 3 + signal) / 4;
+
+  // BPM calculation
+  if (smoothSignal > threshold && !pulseDetected) {
+    currentBeatTime = millis();
+    ibi = currentBeatTime - lastBeatTime;
+    lastBeatTime = currentBeatTime;
+
+    if (ibi > 300 && ibi < 2000) {
+      bpm = 60000 / ibi;
+      Serial.print("BPM: ");
+      Serial.println(bpm);
+
+      // Update BPM on display
+      display.fillRect(30, 0, 40, 10, SH110X_BLACK);
+      display.setCursor(30, 0);
+      display.print(bpm);
+      display.display();
+
+      // Update wave interval based on BPM
+      waveInterval = map(bpm, 60, 180, 30, 5); // Higher BPM = faster scroll
+      waveInterval = constrain(waveInterval, 3, 30);
+
+      // Non-blocking LED blink
+      blinkDelay = map(bpm, 60, 180, 500, 100);
+      blinkDelay = constrain(blinkDelay, 100, 500);
+      blinkStart = millis();
+      blinkState = true;
+      digitalWrite(HeartLed, HIGH);
+    }
+
+    pulseDetected = true;
+  }
+
+  if (smoothSignal < threshold - 30 && pulseDetected) {
+    pulseDetected = false;
+  }
+
+  // LED OFF after delay
+  if (blinkState && millis() - blinkStart >= blinkDelay) {
+    digitalWrite(HeartLed, LOW);
+    blinkState = false;
+  }
+
+  // Draw waveform pixel at dynamic speed
+  if (millis() - lastWaveScroll >= waveInterval) {
+    lastWaveScroll = millis();
+
+    int waveY = map(smoothSignal, 500, 600, BASELINE - WAVE_HEIGHT / 2, BASELINE + WAVE_HEIGHT / 2);
+    display.drawPixel(xPos, waveY, SH110X_WHITE);
+
+    xPos++;
+    if (xPos >= SCREEN_WIDTH) {
+      xPos = 0;
+      display.fillRect(0, 16, SCREEN_WIDTH, SCREEN_HEIGHT - 16, SH110X_BLACK); // Clear waveform area
+    }
+
+    display.display();
+  }
+}
