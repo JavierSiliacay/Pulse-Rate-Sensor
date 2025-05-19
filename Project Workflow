@@ -1,0 +1,60 @@
+🔄 Workflow: Step-by-Step Process of the Code
+
+Initialization:
+
+Serial communication starts at 9600 baud for debugging.
+
+Pulse sensor pin is set as input; Heart LED pin as output.
+
+OLED display is initialized using Adafruit_SH1106G.
+
+"Initializing..." message is shown on the screen.
+
+Initial "BPM: " label is printed on the OLED.
+
+Main Loop Begins:
+
+The analog signal from the pulse sensor is read from A0.
+
+A smoothing algorithm is applied to stabilize the signal (weighted average).
+
+Pulse Detection and BPM Calculation:
+
+When the smoothed signal crosses the threshold and no pulse was recently detected:
+
+Current time is captured.
+
+IBI (Inter-Beat Interval) is calculated as the time between beats.
+
+BPM is computed as 60000 divided by IBI.
+
+BPM is printed on Serial Monitor and updated on the OLED.
+
+Waveform scroll speed (waveInterval) and LED blink timing (blinkDelay) are adjusted based on BPM.
+
+Heart LED is turned ON.
+
+Pulse detection flag is set to true.
+
+Pulse End Detection:
+
+When the signal drops below the threshold minus a margin (30), pulseDetected is reset to false to detect the next beat.
+
+LED Blink Control (non-blocking):
+
+The LED remains ON for a duration defined by blinkDelay.
+
+After the delay, LED is turned OFF, and blink state is reset.
+
+Waveform Drawing:
+
+At intervals based on waveInterval, a pixel is drawn representing the current pulse value.
+
+Y-position is mapped from signal strength to fit within the waveform area.
+
+xPos moves horizontally, wrapping around when reaching the screen edge.
+
+When the screen is full, the waveform area is cleared and reset for continuous scrolling.
+
+Loop repeats indefinitely, updating display and LED feedback in real time as new pulse data is received.
+
