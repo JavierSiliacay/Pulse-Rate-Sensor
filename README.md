@@ -15,12 +15,6 @@ This project is a simple real-time heart rate (BPM) monitor built using an Ardui
 
 ---
 
-## 📷 Demo
-
-![Pulse Monitor OLED Demo](demo.gif) <!-- Replace with actual GIF/image if available -->
-
----
-
 ## 🔌 Hardware Required
 
 | Component          | Description                        |
